@@ -42,13 +42,12 @@ body {
   z-index: -3;
   display: none;
 }
-#videoBg iframe {
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
 
-/* Dark overlay */
+/* Player container fills screen */
+#playerWrap { position: absolute; inset: 0; }
+#player { width: 100%; height: 100%; pointer-events: none; }
+
+/* Overlay */
 .overlay {
   position: fixed;
   inset: 0;
@@ -112,7 +111,6 @@ button {
   letter-spacing: 2px;
 }
 
-/* Progress */
 .progress-container {
   width: min(600px, 80vw);
   height: 20px;
@@ -131,7 +129,6 @@ button {
   opacity: 0.9;
 }
 
-/* Top buttons */
 #bgToggle {
   position: fixed;
   top: 15px;
@@ -162,11 +159,9 @@ footer {
 <div id="imageBg"></div>
 
 <div id="videoBg">
-  <iframe id="ytVideo"
-    src="https://www.youtube.com/embed/isKAfbpsMI0?autoplay=1&mute=1&loop=1&playlist=isKAfbpsMI0&controls=0&modestbranding=1&vq=hd1080"
-    frameborder="0"
-    allow="autoplay">
-  </iframe>
+  <div id="playerWrap">
+    <div id="player"></div>
+  </div>
 </div>
 
 <div class="overlay"></div>
@@ -196,30 +191,28 @@ footer {
 </div>
 
 <script>
-/* Dates */
+/* ===== Countdown dates ===== */
 const standardRelease = new Date("May 19, 2026 00:00:00");
 const premiumRelease  = new Date("May 15, 2026 00:00:00");
 const announceDate    = new Date("May 19, 2025 00:00:00");
 
-/* Current mode */
 let currentEdition = "Standard";
 let currentRelease = standardRelease;
 
-/* Background / sound */
+/* ===== Background + sound state ===== */
 let usingVideo = false;
 let soundEnabled = false;
-const YT_ID = "isKAfbpsMI0";
-const iframe = document.getElementById("ytVideo");
 
+/* ===== UI refs ===== */
 const imageBg = document.getElementById("imageBg");
 const videoBg = document.getElementById("videoBg");
 const bgToggleBtn = document.getElementById("bgToggle");
 const soundToggleBtn = document.getElementById("soundToggleBtn");
 
-/* UI */
 const editionLabel = document.getElementById("editionLabel");
 const editionToggleBtn = document.getElementById("editionToggleBtn");
 const releaseText = document.getElementById("releaseText");
+
 const progressBar = document.getElementById("progressBar");
 const progressText = document.getElementById("progressText");
 
@@ -232,49 +225,7 @@ const elements = {
 
 let lastValues = { days: null, hours: null, minutes: null, seconds: null };
 
-/* YouTube helper */
-function setYouTubeMute(mute) {
-  const base = `https://www.youtube.com/embed/${isKAfbpsMI0}?autoplay=1&loop=1&playlist=${isKAfbpsMI0}&controls=0&modestbranding=1&vq=hd1080`;
-  iframe.src = base + (mute ? "&mute=1" : "&mute=0");
-}
-setYouTubeMute(true);
-
-/* Toggles */
-function toggleBackground() {
-  usingVideo = !usingVideo;
-  if (usingVideo) {
-    imageBg.style.display = "none";
-    videoBg.style.display = "block";
-    bgToggleBtn.textContent = "Switch to Image";
-  } else {
-    imageBg.style.display = "block";
-    videoBg.style.display = "none";
-    bgToggleBtn.textContent = "Switch to Video";
-  }
-}
-
-function toggleSound() {
-  soundEnabled = !soundEnabled;
-  setYouTubeMute(!soundEnabled); // click allows sound
-  soundToggleBtn.textContent = soundEnabled ? "Disable Sound" : "Enable Sound";
-}
-
-function toggleEdition() {
-  if (currentEdition === "Standard") {
-    currentEdition = "Premium";
-    currentRelease = premiumRelease;
-    editionLabel.textContent = "Premium Edition (Early Access)";
-    editionToggleBtn.textContent = "Switch to Standard Edition";
-  } else {
-    currentEdition = "Standard";
-    currentRelease = standardRelease;
-    editionLabel.textContent = "Standard Edition";
-    editionToggleBtn.textContent = "Switch to Premium Edition";
-  }
-  updateCountdown();
-}
-
-
+/* ✅ Reliable number animation */
 function pop(el) {
   el.animate(
     [
@@ -294,6 +245,111 @@ function setAnimated(key, value) {
   }
 }
 
+/* ===== Edition toggle ===== */
+function toggleEdition() {
+  if (currentEdition === "Standard") {
+    currentEdition = "Premium";
+    currentRelease = premiumRelease;
+    editionLabel.textContent = "Premium Edition (Early Access)";
+    editionToggleBtn.textContent = "Switch to Standard Edition";
+  } else {
+    currentEdition = "Standard";
+    currentRelease = standardRelease;
+    editionLabel.textContent = "Standard Edition";
+    editionToggleBtn.textContent = "Switch to Premium Edition";
+  }
+  updateCountdown();
+}
+
+/* ===== YouTube IFrame API ===== */
+const YT_ID = "isKAfbpsMI0";
+let player = null;
+
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player("player", {
+    videoId: YT_ID,
+    playerVars: {
+      autoplay: 1,
+      controls: 0,
+      modestbranding: 1,
+      loop: 1,
+      playlist: YT_ID,
+      mute: 1,
+      playsinline: 1
+    },
+    events: {
+      onReady: () => {
+        player.mute();
+        player.setVolume(60);
+        player.playVideo();
+        if (!usingVideo) player.pauseVideo();
+      }
+    }
+  });
+}
+
+// Load the API
+const tag = document.createElement("script");
+tag.src = "https://www.youtube.com/iframe_api";
+document.head.appendChild(tag);
+
+/* ===== Sound control helpers ===== */
+function forceMuteSoundUI() {
+  // UI + state
+  soundEnabled = false;
+  soundToggleBtn.textContent = "Enable Sound";
+  // player mute (if ready)
+  if (player && typeof player.mute === "function") player.mute();
+}
+
+/* ✅ Sound toggle that works (only meaningful in video mode) */
+function toggleSound() {
+  // If not in video mode, auto-disable + ignore
+  if (!usingVideo) {
+    forceMuteSoundUI();
+    return;
+  }
+  if (!player) return;
+
+  soundEnabled = !soundEnabled;
+
+  if (soundEnabled) {
+    player.unMute();
+    player.setVolume(60);
+    soundToggleBtn.textContent = "Disable Sound";
+  } else {
+    player.mute();
+    soundToggleBtn.textContent = "Enable Sound";
+  }
+}
+
+/* ===== Background toggle (auto-disable sound when switching to image) ===== */
+function toggleBackground() {
+  usingVideo = !usingVideo;
+
+  if (usingVideo) {
+    imageBg.style.display = "none";
+    videoBg.style.display = "block";
+    bgToggleBtn.textContent = "Switch to Image";
+    // start playing muted
+    if (player && typeof player.playVideo === "function") {
+      player.playVideo();
+      player.mute();
+    }
+    // keep sound OFF until user clicks
+    soundEnabled = false;
+    soundToggleBtn.textContent = "Enable Sound";
+  } else {
+    imageBg.style.display = "block";
+    videoBg.style.display = "none";
+    bgToggleBtn.textContent = "Switch to Video";
+    // auto-disable sound
+    forceMuteSoundUI();
+    if (player && typeof player.pauseVideo === "function") player.pauseVideo();
+  }
+}
+
+/* ===== Countdown update ===== */
 function updateCountdown() {
   const now = new Date();
   const distance = currentRelease - now;
@@ -330,9 +386,16 @@ let timer = setInterval(updateCountdown, 1000);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     clearInterval(timer);
+    // if video is active, pause it (and mute)
+    if (player && typeof player.pauseVideo === "function") player.pauseVideo();
+    forceMuteSoundUI();
   } else {
     updateCountdown();
     timer = setInterval(updateCountdown, 1000);
+    if (usingVideo && player && typeof player.playVideo === "function") {
+      player.playVideo();
+      player.mute(); // keep muted until user clicks sound
+    }
   }
 });
 
