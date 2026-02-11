@@ -6,7 +6,7 @@
 
 <style>
   :root {
-    --bg-image: url("https://cdn.forza.net/strapi-uploads/assets/massive_FH_6_Static_Asset_4k_Mountain_423ce9ca2b.webp"); 
+    --bg-image: url("https://cdn.forza.net/strapi-uploads/assets/massive_FH_6_Static_Asset_4k_Mountain_423ce9ca2b.webp");
     --accent: #00ff99;
   }
 
@@ -24,17 +24,15 @@
     overflow: hidden;
   }
 
-  /* IMAGE BACKGROUND */
   #imageBg {
     position: fixed;
     inset: 0;
     background:
-      linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.85)),
+      linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.85)),
       var(--bg-image) center/cover no-repeat;
     z-index: -2;
   }
 
-  /* VIDEO BACKGROUND */
   #videoBg {
     position: fixed;
     inset: 0;
@@ -51,7 +49,7 @@
   .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.5);
     z-index: -1;
   }
 
@@ -93,11 +91,23 @@
     padding: 20px;
     border-radius: 12px;
     min-width: 100px;
+    box-shadow: 0 0 15px rgba(0,255,153,0.3);
   }
 
   .number {
     font-size: 2.5rem;
     color: var(--accent);
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  .label {
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
+
+  .animate {
+    transform: scale(1.3);
+    opacity: 0.6;
   }
 
   .progress-container {
@@ -112,13 +122,13 @@
     height: 100%;
     width: 0%;
     background: linear-gradient(90deg, #00ff99, #00ccff);
+    transition: width 1s linear;
   }
 
   #progressText {
     margin-top: 5px;
   }
 
-  /* TOP LEFT BUTTON */
   #bgToggle {
     position: fixed;
     top: 15px;
@@ -137,7 +147,7 @@
 
 <div id="videoBg">
   
-  <iframe src="https://www.youtube.com/embed/isKAfbpsMI0?autoplay=1&mute=1&loop=1&playlist=isKAfbpsMI0&controls=0&showinfo=0&modestbranding=1"
+  <iframe src="https://www.youtube.com/embed/isKAfbpsMI0?autoplay=1&mute=1&loop=1&playlist=isKAfbpsMI0&controls=0&modestbranding=1&vq=hd1080"
           frameborder="0"
           allow="autoplay"></iframe>
 </div>
@@ -153,10 +163,22 @@
   <button onclick="toggleEdition()">Switch to Premium Edition</button>
 
   <div class="countdown">
-    <div class="time-box"><div class="number" id="days">0</div>DAYS</div>
-    <div class="time-box"><div class="number" id="hours">0</div>HOURS</div>
-    <div class="time-box"><div class="number" id="minutes">0</div>MINUTES</div>
-    <div class="time-box"><div class="number" id="seconds">0</div>SECONDS</div>
+    <div class="time-box">
+      <div class="number" id="days">0</div>
+      <div class="label">DAYS</div>
+    </div>
+    <div class="time-box">
+      <div class="number" id="hours">0</div>
+      <div class="label">HOURS</div>
+    </div>
+    <div class="time-box">
+      <div class="number" id="minutes">0</div>
+      <div class="label">MINUTES</div>
+    </div>
+    <div class="time-box">
+      <div class="number" id="seconds">0</div>
+      <div class="label">SECONDS</div>
+    </div>
   </div>
 
   <div class="progress-container">
@@ -174,6 +196,7 @@
 
   let currentRelease = standardRelease;
   let currentEdition = "Standard";
+  let usingVideo = false;
 
   const elements = {
     days: document.getElementById("days"),
@@ -191,7 +214,7 @@
   const imageBg = document.getElementById("imageBg");
   const videoBg = document.getElementById("videoBg");
 
-  let usingVideo = false;
+  let lastValues = {};
 
   function toggleBackground() {
     usingVideo = !usingVideo;
@@ -219,6 +242,15 @@
     updateCountdown();
   }
 
+  function animateChange(el, value) {
+    if (lastValues[el.id] !== value) {
+      el.classList.add("animate");
+      setTimeout(() => el.classList.remove("animate"), 250);
+      el.textContent = value;
+      lastValues[el.id] = value;
+    }
+  }
+
   function updateCountdown() {
     const now = new Date();
     const distance = currentRelease - now;
@@ -228,10 +260,15 @@
       return;
     }
 
-    elements.days.textContent = Math.floor(distance / (1000 * 60 * 60 * 24));
-    elements.hours.textContent = Math.floor((distance / (1000 * 60 * 60)) % 24);
-    elements.minutes.textContent = Math.floor((distance / (1000 * 60)) % 60);
-    elements.seconds.textContent = Math.floor((distance / 1000) % 60);
+    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((distance / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((distance / (1000 * 60)) % 60);
+    const seconds = Math.floor((distance / 1000) % 60);
+
+    animateChange(elements.days, days);
+    animateChange(elements.hours, hours);
+    animateChange(elements.minutes, minutes);
+    animateChange(elements.seconds, seconds);
 
     const totalDuration = currentRelease - announceDate;
     const elapsed = now - announceDate;
@@ -251,5 +288,3 @@
 
 </body>
 </html>
-
-
