@@ -7,7 +7,7 @@
 
 <style>
 :root {
-  --bg-image: url("https://images.wallpapersden.com/image/download/forza-horizon-5-4k-gaming_bG1naGeUmZqaraWkpJRmbmdlrWZlbWU.jpg");
+  --bg-image: url("https://cdn.forza.net/strapi-uploads/assets/massive_FH_6_Static_Asset_4k_Mountain_423ce9ca2b.webp");
   --accent: #00ff99;
 }
 
@@ -44,8 +44,15 @@ body {
 }
 
 /* Player container fills screen */
-#playerWrap { position: absolute; inset: 0; }
-#player { width: 100%; height: 100%; pointer-events: none; }
+#playerWrap {
+  position: absolute;
+  inset: 0;
+}
+#player {
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* background only */
+}
 
 /* Overlay */
 .overlay {
@@ -261,7 +268,24 @@ function toggleEdition() {
   updateCountdown();
 }
 
-/* ===== YouTube IFrame API ===== */
+/* ===== Background toggle ===== */
+function toggleBackground() {
+  usingVideo = !usingVideo;
+  if (usingVideo) {
+    imageBg.style.display = "none";
+    videoBg.style.display = "block";
+    bgToggleBtn.textContent = "Switch to Image";
+    // start playing if player ready
+    if (player && typeof player.playVideo === "function") player.playVideo();
+  } else {
+    imageBg.style.display = "block";
+    videoBg.style.display = "none";
+    bgToggleBtn.textContent = "Switch to Video";
+    if (player && typeof player.pauseVideo === "function") player.pauseVideo();
+  }
+}
+
+/* ===== YouTube IFrame API (sound control) ===== */
 const YT_ID = "isKAfbpsMI0";
 let player = null;
 
@@ -279,8 +303,8 @@ function onYouTubeIframeAPIReady() {
     },
     events: {
       onReady: () => {
+        // ensure muted autoplay works
         player.mute();
-        player.setVolume(60);
         player.playVideo();
         if (!usingVideo) player.pauseVideo();
       }
@@ -293,25 +317,12 @@ const tag = document.createElement("script");
 tag.src = "https://www.youtube.com/iframe_api";
 document.head.appendChild(tag);
 
-/* ===== Sound control helpers ===== */
-function forceMuteSoundUI() {
-  // UI + state
-  soundEnabled = false;
-  soundToggleBtn.textContent = "Enable Sound";
-  // player mute (if ready)
-  if (player && typeof player.mute === "function") player.mute();
-}
-
-/* ✅ Sound toggle that works (only meaningful in video mode) */
+/* ✅ Sound toggle that actually works */
 function toggleSound() {
-  // If not in video mode, auto-disable + ignore
-  if (!usingVideo) {
-    forceMuteSoundUI();
-    return;
-  }
-  if (!player) return;
-
   soundEnabled = !soundEnabled;
+
+  // Sound can only work after user gesture (this click counts)
+  if (!player) return;
 
   if (soundEnabled) {
     player.unMute();
@@ -320,32 +331,6 @@ function toggleSound() {
   } else {
     player.mute();
     soundToggleBtn.textContent = "Enable Sound";
-  }
-}
-
-/* ===== Background toggle (auto-disable sound when switching to image) ===== */
-function toggleBackground() {
-  usingVideo = !usingVideo;
-
-  if (usingVideo) {
-    imageBg.style.display = "none";
-    videoBg.style.display = "block";
-    bgToggleBtn.textContent = "Switch to Image";
-    // start playing muted
-    if (player && typeof player.playVideo === "function") {
-      player.playVideo();
-      player.mute();
-    }
-    // keep sound OFF until user clicks
-    soundEnabled = false;
-    soundToggleBtn.textContent = "Enable Sound";
-  } else {
-    imageBg.style.display = "block";
-    videoBg.style.display = "none";
-    bgToggleBtn.textContent = "Switch to Video";
-    // auto-disable sound
-    forceMuteSoundUI();
-    if (player && typeof player.pauseVideo === "function") player.pauseVideo();
   }
 }
 
@@ -381,21 +366,16 @@ function updateCountdown() {
     "Release Date: " + currentRelease.toDateString() + " (" + currentEdition + ")";
 }
 
-/* Pause when hidden (QOL) */
+/* Pause when tab hidden (QOL) */
 let timer = setInterval(updateCountdown, 1000);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     clearInterval(timer);
-    // if video is active, pause it (and mute)
     if (player && typeof player.pauseVideo === "function") player.pauseVideo();
-    forceMuteSoundUI();
   } else {
     updateCountdown();
     timer = setInterval(updateCountdown, 1000);
-    if (usingVideo && player && typeof player.playVideo === "function") {
-      player.playVideo();
-      player.mute(); // keep muted until user clicks sound
-    }
+    if (usingVideo && player && typeof player.playVideo === "function") player.playVideo();
   }
 });
 
